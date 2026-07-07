@@ -76,8 +76,9 @@ async def route_prompt(request: RouteRequest):
         "model_used":  None,
         "tokens_used": 0,
         # Judge (defaults)
-        "quality_score":    0.0,
-        "escalation_depth": 0,
+        "quality_score":         0.0,
+        "escalation_depth":      0,
+        "hop_budget_exhausted":  False,
         # Observability
         "start_time": time.time(),
         "latency_ms": 0.0,

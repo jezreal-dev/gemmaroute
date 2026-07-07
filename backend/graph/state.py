@@ -33,6 +33,7 @@ class AgentState(TypedDict):
     # ── Quality judge (set by quality_judge_node) ───────────────────────────
     quality_score: float            # LLM-as-judge score: 0.0–1.0
     escalation_depth: int           # Times we've upgraded the tier
+    hop_budget_exhausted: bool      # True when max depth reached with quality still below threshold
 
     # ── Observability (set progressively) ───────────────────────────────────
     start_time: float               # Unix timestamp at graph entry

@@ -12,17 +12,19 @@ from sqlalchemy import select, func
 from database import AsyncSessionLocal
 from models import RoutingLog
 from clients.ollama_client import check_health as ollama_health
+from clients.fireworks_client import get_circuit_state
 
 router = APIRouter(tags=["observability"])
 
 
-@router.get("/health", summary="Health check — returns status of all services")
-async def health() -> dict[str, str]:
+@router.get("/health", summary="Health check — returns status of all services + circuit breaker")
+async def health() -> dict:
     ollama_ok = await ollama_health()
     return {
-        "status": "ok",
-        "ollama": "reachable" if ollama_ok else "unreachable",
-        "db":     "ok",
+        "status":             "ok",
+        "ollama":             "reachable" if ollama_ok else "unreachable",
+        "fireworks_circuit":  get_circuit_state(),
+        "db":                 "ok",
     }
 
 

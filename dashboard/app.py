@@ -128,6 +128,16 @@ def fetch_stats() -> dict | None:
         return None
 
 
+@st.cache_data(ttl=4)
+def fetch_health() -> dict | None:
+    try:
+        r = httpx.get(f"{BACKEND_URL}/health", timeout=5.0)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        return None
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HEADER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -157,6 +167,35 @@ with col_live:
         st.error("● Offline")
 
 st.markdown("---")
+
+# ── Circuit Breaker Status Banner ──────────────────────────────────────────────
+heath_data = fetch_health()
+if heath_data:
+    cb = heath_data.get("fireworks_circuit", {})
+    cb_state    = cb.get("state", "UNKNOWN")
+    cb_failures = cb.get("failure_count", 0)
+    cb_thresh   = cb.get("failure_threshold", 3)
+    cb_reset    = cb.get("seconds_until_reset", 0)
+
+    if cb_state == "OPEN":
+        st.error(
+            f"### 🔴 Circuit Breaker OPEN — Fireworks AI Fallback Active\n"
+            f"After {cb_thresh} consecutive cloud API failures, all traffic is being routed "
+            f"to **local AMD Ollama** automatically. "
+            f"Look for `[CB_FALLBACK]` tags in the routing log below.  \n"
+            f"Auto-reset in **{cb_reset:.0f}s**."
+        )
+    elif cb_failures > 0:
+        st.warning(
+            f"⚠️ **Circuit Breaker WARNING** — Fireworks AI has had "
+            f"{cb_failures}/{cb_thresh} consecutive failures. "
+            "Will trip OPEN and fall back to Ollama on next failure."
+        )
+    else:
+        st.success(
+            "🟢 **All systems nominal** — Fireworks AI circuit CLOSED. "
+            "Local AMD Ollama and cloud routing both healthy."
+        )
 
 # ── Offline guard ─────────────────────────────────────────────────────────────
 if stats is None:

@@ -19,6 +19,9 @@ pydantic==2.8.2
 pydantic-settings==2.4.0
 python-dotenv==1.0.1
 
+# ── Resilience ────────────────────────────────────────────────────────────────
+tenacity==8.2.3         # Exponential backoff retry decorator
+
 # ── Testing ───────────────────────────────────────────────────────────────────
 pytest==8.3.2
 pytest-asyncio==0.23.8

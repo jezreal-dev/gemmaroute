@@ -100,6 +100,7 @@ async def trivial_respond_node(state: dict) -> dict:
         "current_tier":          "trivial",
         "classifier_confidence": 1.0,
         "escalation_depth":      0,
+        "hop_budget_exhausted":  False,
         "cost_usd":              0.0,
         "saved_usd":             0.0,
     }
@@ -152,21 +153,21 @@ async def local_executor_node(state: dict) -> dict:
 
 
 async def cloud_medium_node(state: dict) -> dict:
-    """Medium tier: Gemma 4 12B via Fireworks AI."""
+    """Medium tier: Gemma 4 12B via Fireworks AI. Falls back to Ollama via Circuit Breaker."""
     from clients.fireworks_client import generate
 
-    model          = settings.CLOUD_MEDIUM_MODEL
-    response, toks = await generate(state["prompt"], model)
-    return {"response": response, "model_used": model, "tokens_used": toks}
+    model                      = settings.CLOUD_MEDIUM_MODEL
+    response, toks, used_model = await generate(state["prompt"], model)
+    return {"response": response, "model_used": used_model, "tokens_used": toks}
 
 
 async def cloud_complex_node(state: dict) -> dict:
-    """Complex tier: Gemma 4 31B via Fireworks AI. Maximum capability."""
+    """Complex tier: Gemma 4 31B via Fireworks AI. Falls back to Ollama via Circuit Breaker."""
     from clients.fireworks_client import generate
 
-    model          = settings.CLOUD_COMPLEX_MODEL
-    response, toks = await generate(state["prompt"], model)
-    return {"response": response, "model_used": model, "tokens_used": toks}
+    model                      = settings.CLOUD_COMPLEX_MODEL
+    response, toks, used_model = await generate(state["prompt"], model)
+    return {"response": response, "model_used": used_model, "tokens_used": toks}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -200,15 +201,35 @@ async def escalate_tier_node(state: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def logger_node(state: dict) -> dict:
-    """Compute final cost/savings and persist a RoutingLog row to SQLite."""
+    """Compute final cost/savings, detect resilience events, and persist a RoutingLog row."""
     from services.cost_estimator import calculate_cost_and_savings
     from database import AsyncSessionLocal
     from models import RoutingLog
+    import logging as _log
+
+    _logger = _log.getLogger("gemmaroute")
 
     latency_ms = (time.time() - state["start_time"]) * 1000
     model      = state.get("model_used", "unknown")
     tokens     = state.get("tokens_used", 0)
     cost_usd, saved_usd = calculate_cost_and_savings(model, tokens)
+
+    # ── Pattern 2: Hop Budget exhaustion detection ────────────────────────────
+    depth    = state.get("escalation_depth", 0)
+    q_score  = state.get("quality_score", 1.0)
+    tier     = state.get("current_tier", "trivial")
+    hop_budget_exhausted = (
+        depth >= settings.MAX_ESCALATION_DEPTH
+        and q_score < settings.QUALITY_THRESHOLD
+        and tier not in ("trivial", None)
+    )
+    if hop_budget_exhausted:
+        _logger.warning(
+            f"⚠️  Hop budget exhausted (depth={depth}/{settings.MAX_ESCALATION_DEPTH}) "
+            f"for session='{state.get('session_id')}'. "
+            f"Quality={q_score:.2f} still below threshold={settings.QUALITY_THRESHOLD}. "
+            "Returning best available response (graceful degradation)."
+        )
 
     async with AsyncSessionLocal() as session:
         log = RoutingLog(
@@ -217,9 +238,9 @@ async def logger_node(state: dict) -> dict:
             initial_tier    = state.get("initial_tier", "unknown"),
             final_tier      = state.get("current_tier", "unknown"),
             model_used      = model,
-            escalations     = state.get("escalation_depth", 0),
+            escalations     = depth,
             classifier_conf = state.get("classifier_confidence", 0.0),
-            quality_score   = state.get("quality_score", 0.0),
+            quality_score   = q_score,
             latency_ms      = latency_ms,
             cost_usd        = cost_usd,
             saved_usd       = saved_usd,
@@ -228,7 +249,8 @@ async def logger_node(state: dict) -> dict:
         await session.commit()
 
     return {
-        "latency_ms": latency_ms,
-        "cost_usd":   cost_usd,
-        "saved_usd":  saved_usd,
+        "latency_ms":           latency_ms,
+        "cost_usd":             cost_usd,
+        "saved_usd":            saved_usd,
+        "hop_budget_exhausted": hop_budget_exhausted,
     }
