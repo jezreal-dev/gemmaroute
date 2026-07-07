@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 @pytest.mark.asyncio
 async def test_health_returns_ok():
-    with patch("clients.ollama_client.check_health", new=AsyncMock(return_value=True)):
+    with patch("routers.stats_endpoint.ollama_health", new=AsyncMock(return_value=True)):
         from httpx import AsyncClient, ASGITransport
         from main import app
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -25,7 +25,7 @@ async def test_health_returns_ok():
 
 @pytest.mark.asyncio
 async def test_health_ollama_unreachable():
-    with patch("clients.ollama_client.check_health", new=AsyncMock(return_value=False)):
+    with patch("routers.stats_endpoint.ollama_health", new=AsyncMock(return_value=False)):
         from httpx import AsyncClient, ASGITransport
         from main import app
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -88,10 +88,37 @@ async def test_route_rejects_missing_prompt():
 @pytest.mark.asyncio
 async def test_stats_returns_valid_schema():
     """Stats should return a valid dict even with an empty database."""
-    from httpx import AsyncClient, ASGITransport
-    from main import app
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        resp = await client.get("/stats")
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    
+    mock_session.scalar = AsyncMock(return_value=0)
+    mock_agg = MagicMock()
+    mock_agg.one.return_value = MagicMock(total_cost=0, total_saved=0, avg_latency=0, avg_quality=0, avg_escalations=0)
+    
+    mock_dist = MagicMock()
+    mock_dist.__iter__.return_value = []
+    
+    mock_recent = MagicMock()
+    mock_recent.scalars.return_value.all.return_value = []
+    
+    async def mock_execute(*args, **kwargs):
+        stmt_str = str(args[0]).lower() if args else ""
+        if "sum" in stmt_str or "avg" in stmt_str:
+            return mock_agg
+        elif "routing_logs.created_at" in stmt_str:
+            return mock_recent
+        else:
+            return mock_dist
+            
+    mock_session.execute = AsyncMock(side_effect=mock_execute)
+
+    with patch("routers.stats_endpoint.AsyncSessionLocal", return_value=mock_session):
+        from httpx import AsyncClient, ASGITransport
+        from main import app
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            resp = await client.get("/stats")
+            
     assert resp.status_code == 200
     data = resp.json()
     assert "total_requests" in data

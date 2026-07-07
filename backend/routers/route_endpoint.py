@@ -7,7 +7,7 @@ structured RouteResponse including full routing metadata.
 """
 import time
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 from graph.builder import routing_graph
@@ -28,6 +28,7 @@ class RouteRequest(BaseModel):
 
 
 class RoutingMetadata(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     initial_tier: Optional[str]
     final_tier: Optional[str]
     escalations: int
