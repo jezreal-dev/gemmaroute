@@ -1,0 +1,97 @@
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  GemmaRoute — docker-compose.yml                                        ║
+# ║  CPU MODE  (local Windows dev — no AMD GPU required)                    ║
+# ║  AMD Cloud: swap ollama image + uncomment device lines (see below)      ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+services:
+
+  # ── Ollama: Local LLM server ────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama          # CPU fallback
+    # ▼ AMD Developer Cloud (ROCm) — uncomment to enable GPU acceleration:
+    # image: ollama/ollama:rocm
+    # devices:
+    #   - /dev/kfd
+    #   - /dev/dri
+    container_name: gemmaroute_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # ── Model Puller: One-shot init to download Gemma 4 models ─────────────
+  model-puller:
+    image: ollama/ollama
+    container_name: gemmaroute_model_puller
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: >
+      /bin/sh -c "
+        echo '📥 Pulling gemma4:2b (router + classifier)...' &&
+        ollama pull gemma4:2b &&
+        echo '📥 Pulling gemma4:4b (local executor + quality judge)...' &&
+        ollama pull gemma4:4b &&
+        echo '✅ All Gemma 4 models ready.'
+      "
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: "no"
+
+  # ── Backend: FastAPI + LangGraph routing engine ──────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gemmaroute_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/app.db
+    volumes:
+      - db_data:/app/data
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Dashboard: Streamlit premium observability UI ─────────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: gemmaroute_dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ── Named volumes (data persists across restarts) ──────────────────────────
+volumes:
+  ollama_data:
+    name: gemmaroute_ollama_data
+  db_data:
+    name: gemmaroute_db_data
