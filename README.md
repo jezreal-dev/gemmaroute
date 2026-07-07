@@ -1,6 +1,6 @@
-# ⚡ GemmaRoute
+# GemmaRoute
 
-> **3-Layer AMD-Native AI Routing Engine** — cut your LLM API bill by 60–80% without losing quality.
+**3-Layer AMD-Native AI Routing Engine.** Cut your LLM API bill by 60 to 80 percent without losing quality.
 
 [![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-E8001C?logo=amd)](https://www.amd.com/en/developer/rocm.html)
 [![Gemma 4](https://img.shields.io/badge/Google-Gemma%204-8B5CF6?logo=google)](https://deepmind.google/technologies/gemma/)
@@ -10,22 +10,22 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/YOUR_USERNAME/gemmaroute.git
+git clone https://github.com/jezreal-dev/gemmaroute.git
 cd gemmaroute
-cp .env.example .env
+copy .env.example .env
 # Edit .env and add your FIREWORKS_API_KEY
 
-# 2. Launch the full stack (pulls Gemma models automatically)
+# 2. Launch the stack
 docker compose up --build
 
 # 3. Open the dashboard
-open http://localhost:8501
+start http://localhost:8501
 
-# 4. Send a test prompt
+# 4. Test the API
 curl -X POST http://localhost:8000/route \
   -H "Content-Type: application/json" \
   -d '{"prompt": "What are your business hours?"}'
@@ -33,53 +33,54 @@ curl -X POST http://localhost:8000/route \
 
 ---
 
-## 🧠 How It Works
+## Architecture Overview
 
-GemmaRoute implements a **3-layer routing waterfall** using Gemma 4 at every stage:
+GemmaRoute implements a 3-layer routing waterfall using Gemma 4 at every stage.
 
 ```
 User Prompt
-    │
-    ▼
-[Layer 1] Heuristic Filter  ──── trivial ──► Instant response ($0.00)
-    │ non-trivial
-    ▼
+    |
+    v
+[Layer 1] Heuristic Filter  ----> trivial ----> Instant response ($0.00)
+    | non-trivial
+    v
 [Layer 1] Gemma 4 2B Classifier  (local AMD, $0.00)
-    │  JSON: { tier, confidence }
-    ├── simple  ──► Gemma 4 4B  (local AMD, $0.00/req)
-    ├── medium  ──► Gemma 4 12B (Fireworks AI, ~$0.20/1M tokens)
-    └── complex ──► Gemma 4 31B (Fireworks AI, ~$0.90/1M tokens)
-                          │
+    |  JSON: { tier, confidence }
+    +---> simple  ----> Gemma 4 4B  (local AMD, $0.00/req)
+    +---> medium  ----> Gemma 4 12B (Fireworks AI, ~$0.20/1M tokens)
+    +---> complex ----> Gemma 4 31B (Fireworks AI, ~$0.90/1M tokens)
+                          |
                     [Layer 3] Gemma 4 4B Quality Judge
-                          │  score 0.0–1.0
-                    score ≥ 0.75 ──► Return response
-                    score < 0.75 ──► Escalate to next tier
+                          |  score 0.0 to 1.0
+                    score >= 0.75 ----> Return response
+                    score < 0.75 ----> Escalate to next tier
 ```
 
-### Key Results
-- **~70% cost reduction** vs. always routing to the complex model
-- **<50ms** routing decision latency (local Gemma classifier)
-- **Zero accuracy loss** — quality gate ensures minimum standards
+### System Resilience
+GemmaRoute is designed for production reliability.
+*   **Circuit Breaker:** If the cloud provider (Fireworks AI) goes down or rate-limits, the circuit trips open for 60 seconds. All traffic falls back to local AMD hardware.
+*   **Hop Budget:** The router is hard-capped to a maximum of 2 escalation hops to prevent infinite loops and latency spikes.
+*   **Exponential Backoff:** Network calls use a 1s, 2s, and 4s backoff schedule for transient errors.
 
 ---
 
-## 🏗️ Architecture
+## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Backend | Python 3.11, FastAPI, LangGraph |
-| Routing Engine | LangGraph `StateGraph` with conditional edges |
-| Local Models | Gemma 4 2B + 4B via Ollama (AMD ROCm / CPU) |
-| Cloud Models | Gemma 4 12B + 31B via Fireworks AI API |
-| Database | SQLite + SQLAlchemy async (aiosqlite) |
-| Dashboard | Streamlit + Plotly |
+| Routing Engine | LangGraph StateGraph |
+| Local Models | Gemma 4 2B and 4B via Ollama |
+| Cloud Models | Gemma 4 12B and 31B via Fireworks AI |
+| Database | SQLite and SQLAlchemy |
+| Dashboard | Streamlit |
 | Container | Docker Compose |
 
 ---
 
-## 🔧 AMD Developer Cloud Deployment
+## AMD Developer Cloud Deployment
 
-Switch from CPU to AMD ROCm by changing **2 lines** in `docker-compose.yml`:
+Switch from CPU to AMD ROCm by editing `docker-compose.yml`.
 
 ```diff
 -    image: ollama/ollama
@@ -91,17 +92,16 @@ Switch from CPU to AMD ROCm by changing **2 lines** in `docker-compose.yml`:
 
 ---
 
-## 📡 API Reference
+## API Reference
 
-### `POST /route`
-Route a prompt through the 3-layer engine.
+### POST /route
+Routes a prompt through the engine.
 
 **Request:**
 ```json
 {
   "prompt": "I need a refund analysis for order #4821",
-  "session_id": "demo-001",
-  "max_cost_tier": "complex"
+  "session_id": "demo-001"
 }
 ```
 
@@ -124,31 +124,20 @@ Route a prompt through the 3-layer engine.
 }
 ```
 
-### `GET /stats` — Aggregate routing statistics
-### `GET /health` — Service health check
+### GET /stats
+Returns aggregate routing statistics and cost savings.
+
+### GET /health
+Returns service health and circuit breaker status.
 
 ---
 
-## 🤖 Gemma 4 Integration
+## Built for AMD Developer Hackathon: ACT II
+**Track 3: Unicorn (Open Innovation)**
 
-| Layer | Model | Role | Deployment |
-|-------|-------|------|-----------|
-| 1 | Gemma 4 E2B (2B) | Semantic classifier | AMD ROCm (local, free) |
-| 2a | Gemma 4 E4B (4B) | Simple query executor | AMD ROCm (local, free) |
-| 2b | Gemma 4 12B | Medium query executor | Fireworks AI |
-| 2c | Gemma 4 31B | Complex query executor | Fireworks AI |
-| 3 | Gemma 4 E4B (4B) | LLM-as-judge quality gate | AMD ROCm (local, free) |
+GemmaRoute demonstrates a real-world enterprise use case. Companies paying for expensive closed-source models can deploy GemmaRoute as a proxy and immediately reduce their LLM costs by routing simple queries to local AMD hardware.
 
 ---
 
-## 🏆 Built for AMD Developer Hackathon: ACT II
-
-**Track 3 — Unicorn (Open Innovation)**
-
-GemmaRoute demonstrates a real-world startup use case: any company paying for GPT-4 or Claude can deploy GemmaRoute as an inference proxy and immediately reduce their LLM costs by 60–80% with no code changes to their application.
-
----
-
-## 📄 License
-
-MIT © 2026 GemmaRoute
+## License
+MIT License. See LICENSE file for details.
