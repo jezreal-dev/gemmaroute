@@ -20,7 +20,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -84,6 +84,7 @@ services:
       - "8501:8501"
     environment:
       - BACKEND_URL=http://backend:8000
+      - API_KEY=${API_KEY:-gemmaroute-demo-2026}
     depends_on:
       backend:
         condition: service_healthy

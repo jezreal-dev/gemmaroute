@@ -27,6 +27,7 @@ st.set_page_config(
 )
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+API_KEY = os.getenv("API_KEY", "gemmaroute-demo-2026")
 
 # ── Color palette ─────────────────────────────────────────────────────────────
 TIER_COLORS = {
@@ -62,6 +63,7 @@ html, body, [class*="css"] {
     background-clip: text;
     line-height: 1.2;
     margin-bottom: 0.15rem;
+    margin-top: 0;
 }
 .hero-sub {
     color: #94A3B8;
@@ -121,7 +123,8 @@ st_autorefresh(interval=5_000, key="dash_refresh")
 @st.cache_data(ttl=4)
 def fetch_stats() -> dict | None:
     try:
-        r = httpx.get(f"{BACKEND_URL}/stats", timeout=5.0)
+        headers = {"X-API-Key": API_KEY}
+        r = httpx.get(f"{BACKEND_URL}/stats", headers=headers, timeout=5.0)
         r.raise_for_status()
         return r.json()
     except Exception:
@@ -131,7 +134,9 @@ def fetch_stats() -> dict | None:
 @st.cache_data(ttl=4)
 def fetch_health() -> dict | None:
     try:
-        r = httpx.get(f"{BACKEND_URL}/health", timeout=5.0)
+        # /health doesn't require auth but we can pass it anyway
+        headers = {"X-API-Key": API_KEY}
+        r = httpx.get(f"{BACKEND_URL}/health", headers=headers, timeout=5.0)
         r.raise_for_status()
         return r.json()
     except Exception:
@@ -144,10 +149,22 @@ def fetch_health() -> dict | None:
 col_title, col_live = st.columns([5, 1])
 
 with col_title:
-    st.markdown('<p class="hero-title">⚡ GemmaRoute</p>', unsafe_allow_html=True)
+    # Inject SEO meta tags and semantic elements
     st.markdown(
-        '<p class="hero-sub">3-Layer AMD-Native AI Routing Engine — '
-        "cut your LLM bill by 60–80% without dropping quality</p>",
+        """
+        <script>
+            if (!document.querySelector('meta[name="description"]')) {
+                const meta = document.createElement('meta');
+                meta.name = "description";
+                meta.content = "GemmaRoute is a 3-Layer AMD-Native AI Routing Engine that cuts LLM bills by 60-80% without dropping quality.";
+                document.head.appendChild(meta);
+            }
+        </script>
+        <h1 class="hero-title" id="gemmaroute-hero">⚡ GemmaRoute</h1>
+        <p class="hero-sub" aria-label="Subtitle">
+            3-Layer AMD-Native AI Routing Engine — cut your LLM bill by 60–80% without dropping quality
+        </p>
+        """,
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -520,6 +537,7 @@ with st.sidebar:
     st.markdown("**📡 Quick curl test:**")
     st.code(
         'curl -s -X POST http://localhost:8000/route \\\n'
+        f'  -H "X-API-Key: {API_KEY}" \\\n'
         '  -H "Content-Type: application/json" \\\n'
         '  -d \'{"prompt": "YOUR PROMPT HERE"}\' | python -m json.tool',
         language="bash",

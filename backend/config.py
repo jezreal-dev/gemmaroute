@@ -24,6 +24,9 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/app.db"
+    
+    # Security
+    API_KEY: str = "gemmaroute-demo-2026"
 
     # ── Quality gate ──────────────────────────────────────────────────────────
     QUALITY_THRESHOLD: float = 0.75      # Minimum acceptable quality score

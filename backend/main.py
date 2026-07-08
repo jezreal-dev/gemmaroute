@@ -12,9 +12,11 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from config import settings
 from database import init_db
 from routers.route_endpoint import router as route_router
 from routers.stats_endpoint import router as stats_router
@@ -58,6 +60,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Security middleware ───────────────────────────────────────────────────────
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    if request.url.path not in ["/docs", "/openapi.json", "/health"]:
+        api_key = request.headers.get("X-API-Key")
+        if api_key != settings.API_KEY:
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    response = await call_next(request)
+    return response
 
 
 # ── Request timing middleware ─────────────────────────────────────────────────
