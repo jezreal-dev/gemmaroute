@@ -12,9 +12,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # ── Ollama (local AMD ROCm or CPU fallback) ───────────────────────────────
     OLLAMA_HOST: str = "http://localhost:11434"
-    LOCAL_ROUTER_MODEL: str = "gemma4:2b"      # Layer 1: classifier
-    LOCAL_EXECUTOR_MODEL: str = "gemma4:4b"    # Layer 2: simple-tier executor
-    LOCAL_JUDGE_MODEL: str = "gemma4:4b"       # Layer 3: quality judge
+    LOCAL_ROUTER_MODEL: str = "gemma2:2b"      # Layer 1: classifier
+    LOCAL_EXECUTOR_MODEL: str = "gemma:2b"     # Layer 2: simple-tier executor
+    LOCAL_JUDGE_MODEL: str = "gemma:2b"        # Layer 3: quality judge
 
     # ── Fireworks AI ──────────────────────────────────────────────────────────
     FIREWORKS_API_KEY: str = ""

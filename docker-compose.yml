@@ -38,11 +38,11 @@ services:
       - OLLAMA_HOST=http://ollama:11434
     entrypoint: >
       /bin/sh -c "
-        echo '📥 Pulling gemma4:2b (router + classifier)...' &&
-        ollama pull gemma4:2b &&
-        echo '📥 Pulling gemma4:4b (local executor + quality judge)...' &&
-        ollama pull gemma4:4b &&
-        echo '✅ All Gemma 4 models ready.'
+        echo '📥 Pulling gemma2:2b (router + classifier)...' &&
+        ollama pull gemma2:2b &&
+        echo '📥 Pulling gemma:2b (local executor + quality judge)...' &&
+        ollama pull gemma:2b &&
+        echo '✅ All Gemma 2B models ready.'
       "
     volumes:
       - ollama_data:/root/.ollama
