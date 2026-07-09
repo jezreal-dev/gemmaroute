@@ -32,3 +32,8 @@ Thumbs.db
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Temporary files & executables
+*.exe
+*.pdf
+*.json
