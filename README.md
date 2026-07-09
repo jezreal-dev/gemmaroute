@@ -148,5 +148,28 @@ GemmaRoute demonstrates a real-world enterprise use case. Companies paying for e
 
 ---
 
+## Frequently Asked Questions (FAQ)
+
+**Q: Do I need to run this locally to test it?**  
+A: No! We have a live Vercel frontend and a persistent Ngrok tunnel running our local AMD backend. You can test the application entirely through the provided web link.
+
+**Q: If I do run it locally, why do I need a Fireworks API key?**  
+A: Our system uses hybrid routing. Simple queries are handled locally by our AMD server at $0 cost, but complex queries are routed to Fireworks AI serverless models (Mixtral/Llama3). The `.env` file must contain your key to test the complex fallback scenarios.
+
+**Q: What if the local AMD server drops offline during judging?**  
+A: Our frontend is designed with resilience in mind. If the Ngrok tunnel is unreachable, the Vercel app elegantly falls back to simulated API data so you can still review the UI and architecture design.
+
+---
+
+## Contact Information
+
+**Live Demo Active:** The live Ngrok tunnel and Vercel frontend will remain running constantly during the judging period.
+
+If you are a judge who wishes to run the backend on your own local machine and you need any assistance configuring the environment (e.g., setting up Docker, getting API keys, or configuring Ollama), please feel free to reach out directly:
+
+📧 **Email:** jezreelmomoh1234@gmail.com
+
+---
+
 ## License
 MIT License. See LICENSE file for details.

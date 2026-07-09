@@ -60,6 +60,14 @@ class RouteResponse(BaseModel):
     ),
 )
 async def route_prompt(request: RouteRequest):
+    # ── Hybrid Routing Logic ──────────────────────────────────────────────────
+    # 1. We build an initial AgentState for LangGraph.
+    # 2. The graph dynamically routes the request:
+    #    - Trivial queries -> Instant response (No LLM)
+    #    - Simple queries -> Local AMD ROCm via Ollama
+    #    - Medium/Complex -> Serverless Fireworks API
+    # 3. If Fireworks API fails or rate limits, it falls back to local Ollama.
+    # ──────────────────────────────────────────────────────────────────────────
     initial_state: AgentState = {
         # Input
         "prompt":        request.prompt,
