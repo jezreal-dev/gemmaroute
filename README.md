@@ -10,6 +10,12 @@
 
 ---
 
+## 🌐 Frontend Repository
+**The UI for this project is hosted in a separate repository:**
+👉 [https://github.com/Nickysantus/gemma-frontend](https://github.com/Nickysantus/gemma-frontend)
+
+---
+
 ## 🏆 Message to the Judges
 - **Please watch our 2-minute demo video first for the full live experience.**
 - **Our local routing engine is powered by an AMD GPU using ROCm architecture.**
