@@ -10,6 +10,14 @@
 
 ---
 
+## 🏆 Message to the Judges
+- **Please watch our 2-minute demo video first for the full live experience.**
+- **Our local routing engine is powered by an AMD GPU using ROCm architecture.**
+- **You can test the live Vercel link. Note: If our local AMD server happens to be offline during grading, the UI elegantly falls back to simulated data.**
+- **To run the backend locally on your own AMD hardware: You MUST provide your own Fireworks API key in the `.env` file before running Docker.**
+
+---
+
 ## Quick Start
 
 ```bash
