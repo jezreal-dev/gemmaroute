@@ -127,6 +127,14 @@ async def gemma_classifier_node(state: dict) -> dict:
         # Clamp tier to valid values
         if tier not in ("simple", "medium", "complex"):
             tier = "medium"
+        # ── Enforce max_cost_tier cap ─────────────────────────────────────────
+        # If the caller set a cost ceiling (e.g. max_cost_tier="medium"),
+        # never route above it regardless of classifier output.
+        max_tier = state.get("max_cost_tier", "complex")
+        tier_order = ["simple", "medium", "complex"]
+        if max_tier in tier_order and tier_order.index(tier) > tier_order.index(max_tier):
+            _logger.info(f"Capping tier {tier} → {max_tier} (max_cost_tier enforced)")
+            tier = max_tier
         _logger.info(f"Classifier → tier={tier} confidence={confidence:.2f}")
     except Exception as exc:
         # Ollama unreachable or timed out — safe fallback to medium tier

@@ -77,8 +77,8 @@ _MEDIUM_SIGNALS = frozenset([
     "cancel subscription", "downgrade", "upgrade", "payment failed",
     "charged twice", "double charge", "credit", "reopen",
     # Account operations
-    "account suspended", "account locked", "verify identity",
-    "data export", "delete account", "transfer account",
+    "account suspended", "account locked", "account has been suspended",
+    "account has been locked", "verify identity",    "data export", "delete account", "delete my account", "transfer account",
 ])
 
 # Minimum confidence below which we bump one tier up (safer than trusting a
