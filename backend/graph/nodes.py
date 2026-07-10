@@ -111,11 +111,35 @@ async def trivial_respond_node(state: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def gemma_classifier_node(state: dict) -> dict:
-    """Bypassed local classification to unblock frontend. Route directly to Fireworks Complex tier."""
+    """
+    Layer 1b: Use local Gemma 2B via Ollama to classify the prompt into a tier.
+    Falls back to 'medium' tier if Ollama is unreachable (e.g. no local GPU).
+    Zero API cost — runs entirely on local AMD ROCm hardware.
+    """
+    import logging as _log
+    _logger = _log.getLogger("gemmaroute")
+
+    try:
+        from clients.ollama_client import classify_prompt
+        result = await classify_prompt(state["prompt"])
+        tier       = result.get("tier", "medium")
+        confidence = float(result.get("confidence", 0.5))
+        # Clamp tier to valid values
+        if tier not in ("simple", "medium", "complex"):
+            tier = "medium"
+        _logger.info(f"Classifier → tier={tier} confidence={confidence:.2f}")
+    except Exception as exc:
+        # Ollama unreachable or timed out — safe fallback to medium tier
+        _logger.warning(
+            f"⚠️  Classifier failed ({type(exc).__name__}): {exc}. "
+            "Falling back to 'medium' tier."
+        )
+        tier, confidence = "medium", 0.5
+
     return {
-        "initial_tier":          "complex",
-        "current_tier":          "complex",
-        "classifier_confidence": 0.99,
+        "initial_tier":          tier,
+        "current_tier":          tier,
+        "classifier_confidence": confidence,
     }
 
 
@@ -169,8 +193,32 @@ async def cloud_complex_node(state: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def quality_judge_node(state: dict) -> dict:
-    """Bypassed local quality judge to unblock frontend."""
-    return {"quality_score": 1.0}
+    """
+    Layer 3: Use local Gemma 2B via Ollama as an LLM-as-judge quality gate.
+    Scores the response 0.0–1.0. Falls back to 0.75 (pass threshold) if Ollama
+    is unreachable — ensures the pipeline keeps flowing without a local GPU.
+    Zero API cost — runs entirely on local AMD ROCm hardware.
+    """
+    import logging as _log
+    _logger = _log.getLogger("gemmaroute")
+
+    try:
+        from clients.ollama_client import judge_quality
+        score = await judge_quality(
+            prompt   = state["prompt"],
+            response = state.get("response", ""),
+        )
+        score = max(0.0, min(1.0, float(score)))   # clamp to [0, 1]
+        _logger.info(f"Quality judge → score={score:.2f} (threshold={settings.QUALITY_THRESHOLD})")
+    except Exception as exc:
+        # Ollama unreachable — default to passing score so pipeline doesn't stall
+        _logger.warning(
+            f"⚠️  Quality judge failed ({type(exc).__name__}): {exc}. "
+            f"Defaulting to score={settings.QUALITY_THRESHOLD} (pass)."
+        )
+        score = settings.QUALITY_THRESHOLD
+
+    return {"quality_score": score}
 
 
 async def escalate_tier_node(state: dict) -> dict:

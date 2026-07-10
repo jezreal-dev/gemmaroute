@@ -53,10 +53,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Allow Streamlit dashboard (and any other client) to call the API
+# Allow Streamlit dashboard and the Next.js frontend to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*", "https://gemma-frontend.vercel.app"],
+    allow_origins=[
+        "https://gemmaroute.vercel.app",
+        "http://localhost:3000",   # local Next.js dev
+        "http://localhost:8501",   # local Streamlit dev
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -65,6 +69,13 @@ app.add_middleware(
 # ── Security middleware ───────────────────────────────────────────────────────
 @app.middleware("http")
 async def verify_api_key(request: Request, call_next):
+    # Skip auth for CORS preflight requests — OPTIONS never carries API keys.
+    # Without this, the browser's preflight gets a bare 401 before CORS headers
+    # are attached, which the browser misreports as a CORS error.
+    if request.method == "OPTIONS":
+        response = await call_next(request)
+        return response
+
     if request.url.path not in ["/docs", "/openapi.json", "/health"]:
         api_key = request.headers.get("X-API-Key")
         if api_key != settings.API_KEY:

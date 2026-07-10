@@ -133,9 +133,13 @@ async def generate(prompt: str, model: str, system: str = "") -> tuple[str, int]
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(_OLLAMA_CHAT, json=payload)
         resp.raise_for_status()
-        data   = resp.json()
-        text   = data["message"]["content"]
-        tokens = data.get("eval_count", 0) + data.get("prompt_eval_count", 0)
+        try:
+            data   = resp.json()
+            text   = data["message"]["content"]
+            tokens = data.get("eval_count", 0) + data.get("prompt_eval_count", 0)
+        except (KeyError, ValueError) as exc:
+            logger.warning(f"Ollama generate returned unexpected JSON: {exc}. Raw: {resp.text[:200]}")
+            text, tokens = "", 0
         return text, tokens
 
 
