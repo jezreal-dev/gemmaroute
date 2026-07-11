@@ -1,6 +1,6 @@
 # GemmaRoute
 
-**3-Layer AMD-Native AI Routing Engine.** Cut your LLM API bill by 60–80% without losing quality.
+**3-Layer AMD-Native AI Routing Engine.** Cut your LLM API bill by up to 80% without losing quality.
 
 [![AMD ROCm](https://img.shields.io/badge/AMD-ROCm-E8001C?logo=amd)](https://www.amd.com/en/developer/rocm.html)
 [![Gemma](https://img.shields.io/badge/Google-Gemma%202-8B5CF6?logo=google)](https://deepmind.google/technologies/gemma/)
@@ -191,9 +191,9 @@ User Prompt
 │  Signal floor: LLM tier can never go below pre-classifier.   │
 └──────────────────────────────────────────────────────────────┘
      │
-     ├─ simple  → Gemma 2B local via Ollama        ($0.00/req)
-     ├─ medium  → Mixtral 8x7B via Fireworks AI   (~$0.0002/req)
-     └─ complex → LLaMA 3.1 405B via Fireworks AI (~$0.0225/req)
+     ├─ simple  → Gemma 2B local via Ollama           ($0.00/req)
+     ├─ medium  → DeepSeek V4 Flash via Fireworks AI  (~$0.00006/req)
+     └─ complex → DeepSeek V4 Pro via Fireworks AI    (~$0.00040/req)
                           │
                           ▼
 ┌──────────────────────────────────────────────────────────────┐
@@ -227,7 +227,7 @@ User Prompt
 | Backend API | FastAPI | 0.115 |
 | Routing Engine | LangGraph StateGraph | 0.2.45 |
 | Local Models | Gemma 2B / gemma2:2b via Ollama | — |
-| Cloud Models | Mixtral 8x7B + LLaMA 3.1 405B via Fireworks AI | — |
+| Cloud Models | DeepSeek V4 Flash (medium) + DeepSeek V4 Pro (complex) via Fireworks AI | — |
 | Database | SQLite + SQLAlchemy async | 2.0.36 |
 | Observability | Streamlit dashboard | — |
 | Frontend | Next.js 16, React 19, Tailwind v4 | — |
@@ -263,9 +263,9 @@ Routes a prompt through the full 4-layer pipeline.
     "escalations": 0,
     "classifier_confidence": 0.97,
     "quality_score": 0.88,
-    "model_used": "accounts/fireworks/models/llama-v3p1-405b-instruct",
-    "latency_ms": 1840,
-    "estimated_cost_usd": 0.0000315,
+    "model_used": "accounts/fireworks/models/deepseek-v4-pro",
+    "latency_ms": 25700,
+    "estimated_cost_usd": 0.00040,
     "cost_saved_vs_max_usd": 0.0
   },
   "session_id": "demo-001"
@@ -279,8 +279,8 @@ Routes a prompt through the full 4-layer pipeline.
 | `"Hello!"` | Heuristic filter | trivial | $0.00 |
 | `"What are your business hours?"` | Heuristic filter | trivial | $0.00 |
 | `"Where is my order?"` | Gemma classifier | simple | $0.00 |
-| `"I want to return an item"` | Signal floor → medium | medium | ~$0.0002 |
-| `"I have a legal SLA violation"` | Signal check → complex (no Ollama call) | complex | ~$0.022 |
+| `"I want to return an item"` | Signal floor → medium | medium | ~$0.00006 |
+| `"I have a legal SLA violation"` | Signal check → complex (no Ollama call) | complex | ~$0.00040 |
 
 ### GET /stats
 
@@ -336,8 +336,8 @@ Optional overrides:
 LOCAL_ROUTER_MODEL=gemma2:2b
 LOCAL_EXECUTOR_MODEL=gemma:2b
 LOCAL_JUDGE_MODEL=gemma:2b
-CLOUD_MEDIUM_MODEL=accounts/fireworks/models/mixtral-8x7b-instruct
-CLOUD_COMPLEX_MODEL=accounts/fireworks/models/llama-v3p1-405b-instruct
+CLOUD_MEDIUM_MODEL=accounts/fireworks/models/deepseek-v4-flash
+CLOUD_COMPLEX_MODEL=accounts/fireworks/models/deepseek-v4-pro
 QUALITY_THRESHOLD=0.75
 MAX_ESCALATION_DEPTH=2
 ```
@@ -422,9 +422,11 @@ gemmaroute/
 
 | Commit | Change |
 |---|---|
-| `ff3909c` | Hybrid 3-layer classifier: pre-signal check + confidence gate + calibrated judge rubric |
-| `3e5e427` | CORS fix (OPTIONS bypass), un-bypass classifier/judge nodes, cost savings fix, docker env_file fix |
-| `5892b3f` | Frontend repo link added |
+| `bd8e4f7` | docs: add local dev + Ngrok tunnel setup guide |
+| `4d71cce` | fix: set correct working Fireworks serverless model IDs (DeepSeek V4) |
+| `50847c0` | test+docs: 52/52 tests passing, full README rewrite, max_cost_tier cap |
+| `ff3909c` | feat: hybrid 3-layer classifier + confidence gate + calibrated judge rubric |
+| `3e5e427` | fix: CORS preflight bypass, un-bypass classifier/judge nodes, cost savings fix |
 
 ---
 
