@@ -58,6 +58,109 @@ curl -X POST http://localhost:8000/route \
 
 ---
 
+## Running Locally Without Docker (Development / Demo Mode)
+
+Use this if you want to run the backend directly with Python and expose it
+publicly via Ngrok so the Vercel frontend can connect to it.
+
+### Prerequisites
+
+- Python 3.11+ installed
+- A [Fireworks AI](https://fireworks.ai) account with an API key
+- [Ngrok](https://ngrok.com/download) installed and authenticated
+
+### Step 1 — Install dependencies
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### Step 2 — Create the environment file
+
+Create `backend/.env` with the following:
+
+```env
+FIREWORKS_API_KEY=your_fireworks_api_key_here
+API_KEY=gemmaroute-demo-2026
+OLLAMA_HOST=http://localhost:11434
+DATABASE_URL=sqlite+aiosqlite:///./data/app.db
+```
+
+> The `FIREWORKS_API_KEY` must be a serverless-enabled key from your Fireworks
+> account. Get one at fireworks.ai → Settings → API Keys.
+
+### Step 3 — Start the backend
+
+Open **Terminal 1** and run:
+
+```bash
+cd backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Wait for this output before moving on:
+```
+✅ SQLite database initialised.
+INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+
+### Step 4 — Expose via Ngrok tunnel
+
+Open **Terminal 2** (leave Terminal 1 running) and run:
+
+```bash
+# Windows
+.\ngrok.exe http 8000
+
+# macOS / Linux
+ngrok http 8000
+```
+
+Ngrok will display a forwarding URL like:
+```
+Forwarding   https://xxxx-xx-xx-xxx-xxx.ngrok-free.app -> http://localhost:8000
+```
+
+Copy that HTTPS URL — this is your live backend URL.
+
+### Step 5 — Verify the tunnel works
+
+```bash
+curl https://YOUR-NGROK-URL/health
+# Expected: {"status":"ok","ollama":"unreachable","fireworks_circuit":{"state":"CLOSED",...},"db":"ok"}
+```
+
+### Step 6 — Connect the Vercel frontend
+
+Tell your Vercel project the backend URL:
+
+1. Go to **vercel.com** → your gemmaroute project → **Settings → Environment Variables**
+2. Set `NEXT_PUBLIC_API_URL` to your Ngrok HTTPS URL (no trailing slash)
+3. Set `NEXT_PUBLIC_API_KEY` to `gemmaroute-demo-2026`
+4. Go to **Deployments** → click **Redeploy** on the latest deployment
+
+Once redeployed, open `gemmaroute.vercel.app` — the header should show a
+green **"live backend"** dot confirming the frontend is connected.
+
+> **Important:** The free Ngrok URL changes every time you restart Ngrok.
+> If you restart the tunnel, repeat Step 6 with the new URL.
+> Keep both terminals open for the duration of your demo session.
+
+### Keeping the Machine Awake (Windows)
+
+Prevent the laptop from sleeping and killing the tunnel during a demo:
+
+```powershell
+# Disable sleep (run in PowerShell)
+powercfg /change standby-timeout-ac 0
+
+# Re-enable after demo
+powercfg /change standby-timeout-ac 30
+```
+
+---
+
 ## Architecture
 
 GemmaRoute implements a 4-stage routing waterfall. Every stage uses Gemma 2.
