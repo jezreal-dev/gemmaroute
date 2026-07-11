@@ -17,7 +17,7 @@
 | Resource | URL |
 |---|---|
 | Frontend | https://gemmaroute.vercel.app |
-| Frontend Repo | https://github.com/Nickysantus/gemmaroute |
+| Frontend Repo | https://github.com/jezreal-dev/gemmaroute-frontend |
 | Backend Repo | https://github.com/jezreal-dev/gemmaroute |
 
 ---
