@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # ── Fireworks AI ──────────────────────────────────────────────────────────
     FIREWORKS_API_KEY: str = ""
     FIREWORKS_BASE_URL: str = "https://api.fireworks.ai/inference/v1"
-    CLOUD_MEDIUM_MODEL: str = "accounts/fireworks/models/mixtral-8x7b-instruct"
-    CLOUD_COMPLEX_MODEL: str = "accounts/fireworks/models/llama-v3p1-405b-instruct"
+    CLOUD_MEDIUM_MODEL: str = "accounts/fireworks/models/kimi-k2p7-code"
+    CLOUD_COMPLEX_MODEL: str = "accounts/fireworks/models/kimi-k2p7-code"
 
     # ── Database ──────────────────────────────────────────────────────────────
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/app.db"
