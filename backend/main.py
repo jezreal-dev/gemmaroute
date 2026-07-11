@@ -58,8 +58,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://gemmaroute.vercel.app",
-        "http://localhost:3000",   # local Next.js dev
-        "http://localhost:8501",   # local Streamlit dev
+        "https://gemmaroute-cyan.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:8501",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
