@@ -110,15 +110,55 @@ async def trivial_respond_node(state: dict) -> dict:
 # Layer 1b — Gemma Semantic Classifier (local AMD ROCm, $0.00)
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Layer 0 — Pre-Classifier Signal Keywords ─────────────────────────────────
+# High-signal vocabulary that bypasses the Gemma classifier entirely.
+# Detected in ~0ms — sets a minimum tier floor before any LLM runs.
+_COMPLEX_SIGNALS  = {"legal", "sla", "violation", "contract", "compliance", "lawsuit", "fraud", "escalate"}
+_MEDIUM_SIGNALS   = {"return", "refund", "billing", "charge", "invoice", "dispute", "cancel", "chargeback"}
+
+
 async def gemma_classifier_node(state: dict) -> dict:
     """
     Layer 1b: Use local Gemma 2B via Ollama to classify the prompt into a tier.
     Falls back to 'medium' tier if Ollama is unreachable (e.g. no local GPU).
     Zero API cost — runs entirely on local AMD ROCm hardware.
+
+    Layer 0 pre-check: high-signal keywords are detected instantly (~0ms) and
+    bypass the LLM classifier entirely, setting a minimum tier floor.
     """
     import logging as _log
     _logger = _log.getLogger("gemmaroute")
 
+    # ── Layer 0: Pre-Classifier Signal Check (~0ms, $0.00) ───────────────────
+    prompt_lower = state["prompt"].lower()
+    prompt_words = set(re.findall(r"\b\w+\b", prompt_lower))
+
+    complex_hits = prompt_words & _COMPLEX_SIGNALS
+    medium_hits  = prompt_words & _MEDIUM_SIGNALS
+
+    if complex_hits:
+        _logger.info(
+            f"⚡ Signal bypass: complex keywords detected {complex_hits} — "
+            "skipping classifier, routing directly to complex tier."
+        )
+        return {
+            "initial_tier":          "complex",
+            "current_tier":          "complex",
+            "classifier_confidence": 0.97,
+        }
+
+    if medium_hits:
+        _logger.info(
+            f"⚡ Signal bypass: medium keywords detected {medium_hits} — "
+            "skipping classifier, routing directly to medium tier."
+        )
+        return {
+            "initial_tier":          "medium",
+            "current_tier":          "medium",
+            "classifier_confidence": 0.90,
+        }
+
+    # ── Layer 1b: Gemma 2B Semantic Classifier ───────────────────────────────
     try:
         from clients.ollama_client import classify_prompt
         result = await classify_prompt(state["prompt"])
@@ -130,7 +170,7 @@ async def gemma_classifier_node(state: dict) -> dict:
         # ── Enforce max_cost_tier cap ─────────────────────────────────────────
         # If the caller set a cost ceiling (e.g. max_cost_tier="medium"),
         # never route above it regardless of classifier output.
-        max_tier = state.get("max_cost_tier", "complex")
+        max_tier   = state.get("max_cost_tier", "complex")
         tier_order = ["simple", "medium", "complex"]
         if max_tier in tier_order and tier_order.index(tier) > tier_order.index(max_tier):
             _logger.info(f"Capping tier {tier} → {max_tier} (max_cost_tier enforced)")
