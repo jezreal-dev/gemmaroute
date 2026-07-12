@@ -62,6 +62,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8501",
     ],
+    allow_origin_regex=r"https://gemmaroute.*\.vercel\.app",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=False,
