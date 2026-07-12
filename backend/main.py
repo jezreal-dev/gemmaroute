@@ -79,7 +79,7 @@ async def verify_api_key(request: Request, call_next):
         response = await call_next(request)
         return response
 
-    if request.url.path not in ["/docs", "/openapi.json", "/health"]:
+    if request.url.path not in ["/docs", "/openapi.json", "/health", "/stats"]:
         api_key = request.headers.get("X-API-Key")
         if api_key != settings.API_KEY:
             return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
